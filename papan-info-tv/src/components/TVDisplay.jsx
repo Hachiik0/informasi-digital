@@ -4,7 +4,6 @@ import { db } from '../firebase';
 
 export default function TVDisplay({ kembalikanKeMenu }) {
   const [mediaTayang, setMediaTayang] = useState(null);
-  // Tambahan: useRef untuk menargetkan elemen media secara spesifik
   const mediaRef = useRef(null); 
 
   useEffect(() => {
@@ -17,23 +16,17 @@ export default function TVDisplay({ kembalikanKeMenu }) {
     return () => unsubscribe();
   }, []);
 
-  // Fungsi layar penuh yang HANYA menargetkan mediaRef
-  const tanganiLayarPenuh = () => {
-    if (mediaRef.current) {
-      if (!document.fullscreenElement) {
-        mediaRef.current.requestFullscreen().catch((err) => {
-          console.error(`Gagal masuk mode layar penuh: ${err.message}`);
-        });
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-      }
+  // Fungsi: Cukup klik di mana saja untuk masuk ke mode layar penuh
+  const tanganiLayarPenuhOtomatis = () => {
+    if (mediaRef.current && !document.fullscreenElement) {
+      mediaRef.current.requestFullscreen().catch((err) => {
+        console.error(`Gagal masuk mode layar penuh: ${err.message}`);
+      });
     }
   };
 
-  // Fungsi khusus untuk kembali ke menu dan memastikan fullscreen mati
-  const tanganiKembali = () => {
+  const tanganiKembali = (e) => {
+    e.stopPropagation(); // Mencegah klik tombol "Kembali" memicu layar penuh
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch((err) => console.error(err));
     }
@@ -41,51 +34,56 @@ export default function TVDisplay({ kembalikanKeMenu }) {
   };
 
   return (
-    <div style={{ 
-      backgroundColor: '#000', 
-      width: '100vw', 
-      height: '100vh', 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
+    <div 
+      onClick={tanganiLayarPenuhOtomatis} /* Seluruh layar kini berfungsi sebagai tombol fullscreen */
+      style={{ 
+        backgroundColor: '#000', 
+        width: '100vw', 
+        height: '100vh', 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        cursor: 'pointer' // Kursor berubah jadi tanda klik agar operator tahu
+      }}
+    >
       
-      {/* Wadah Navigasi */}
-      <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, display: 'flex', gap: '10px' }}>
+      {/* Tombol Navigasi */}
+      <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10 }}>
         <button 
           onClick={tanganiKembali} 
           style={{ padding: '8px 15px', backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
         >
           ← Kembali
         </button>
-        
-        <button 
-          onClick={tanganiLayarPenuh} 
-          style={{ padding: '8px 15px', backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          ⛶ Fullscreen Media
-        </button>
       </div>
+
+      {/* Teks Petunjuk Bantuan (hanya muncul jika belum fullscreen) */}
+      {!document.fullscreenElement && mediaTayang && (
+        <div style={{ position: 'absolute', top: '25px', right: '30px', color: 'rgba(255,255,255,0.4)', zIndex: 5, fontSize: '14px', fontWeight: 'bold' }}>
+          🖱️ Ketuk layar di mana saja untuk Fullscreen
+        </div>
+      )}
 
       {!mediaTayang ? (
         <h2 style={{ color: '#444' }}>Mencari sinyal tayangan...</h2>
       ) : mediaTayang.tipeMedia === 'video' ? (
         <video 
-          ref={mediaRef} /* Menyisipkan ref ke video */
+          ref={mediaRef} 
           src={mediaTayang.urlMedia} 
           autoPlay 
           loop 
-          controls
-          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+          muted /* Ini kuncinya: Video menjadi bisu sehingga otomatis berputar tanpa diblokir browser */
+          playsInline /* Best practice agar lancar di browser TV/Mobile */
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', pointerEvents: 'none' }}
         />
       ) : (
         <img 
-          ref={mediaRef} /* Menyisipkan ref ke gambar */
+          ref={mediaRef} 
           src={mediaTayang.urlMedia} 
           alt="Tayangan TV"
-          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', pointerEvents: 'none' }}
         />
       )}
 
