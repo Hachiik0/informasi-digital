@@ -32,7 +32,7 @@ function App() {
             boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
           }}
         >
-          📺 Buka Mode TV
+        Buka Mode TV
         </button>
         
         <button 
@@ -43,7 +43,7 @@ function App() {
             boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
           }}
         >
-          ⚙️ Buka Panel Admin
+          Buka Panel Admin
         </button>
       </div>
     </div>

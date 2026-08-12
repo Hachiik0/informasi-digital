@@ -16,26 +16,46 @@ export default function TVDisplay({ kembalikanKeMenu }) {
     return () => unsubscribe();
   }, []);
 
-  // Fungsi: Cukup klik di mana saja untuk masuk ke mode layar penuh
+  // Fungsi layar penuh yang diperbarui dengan dukungan lintas perangkat (Cross-Browser)
   const tanganiLayarPenuhOtomatis = () => {
-    if (mediaRef.current && !document.fullscreenElement) {
-      mediaRef.current.requestFullscreen().catch((err) => {
-        console.error(`Gagal masuk mode layar penuh: ${err.message}`);
-      });
+    const elemen = mediaRef.current;
+    
+    if (elemen && !document.fullscreenElement && !document.webkitFullscreenElement) {
+      // 1. Standar Modern (Desktop & Android TV)
+      if (elemen.requestFullscreen) {
+        elemen.requestFullscreen().catch((err) => console.error(err));
+      } 
+      // 2. Safari & Chrome versi lama (Banyak HP Android)
+      else if (elemen.webkitRequestFullscreen) { 
+        elemen.webkitRequestFullscreen();
+      } 
+      // 3. Khusus Video di HP iPhone / iOS
+      else if (elemen.webkitEnterFullscreen) {
+        elemen.webkitEnterFullscreen();
+      }
+      // 4. Microsoft Edge lama
+      else if (elemen.msRequestFullscreen) {
+        elemen.msRequestFullscreen();
+      }
     }
   };
 
   const tanganiKembali = (e) => {
-    e.stopPropagation(); // Mencegah klik tombol "Kembali" memicu layar penuh
-    if (document.fullscreenElement && document.exitFullscreen) {
-      document.exitFullscreen().catch((err) => console.error(err));
+    e.stopPropagation(); 
+    
+    // Perintah keluar fullscreen juga diperbarui untuk lintas perangkat
+    if (document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
     }
+    
     kembalikanKeMenu();
   };
 
   return (
     <div 
-      onClick={tanganiLayarPenuhOtomatis} /* Seluruh layar kini berfungsi sebagai tombol fullscreen */
+      onClick={tanganiLayarPenuhOtomatis} 
       style={{ 
         backgroundColor: '#000', 
         width: '100vw', 
@@ -45,11 +65,10 @@ export default function TVDisplay({ kembalikanKeMenu }) {
         alignItems: 'center',
         position: 'relative',
         overflow: 'hidden',
-        cursor: 'pointer' // Kursor berubah jadi tanda klik agar operator tahu
+        cursor: 'pointer' 
       }}
     >
       
-      {/* Tombol Navigasi */}
       <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10 }}>
         <button 
           onClick={tanganiKembali} 
@@ -59,10 +78,9 @@ export default function TVDisplay({ kembalikanKeMenu }) {
         </button>
       </div>
 
-      {/* Teks Petunjuk Bantuan (hanya muncul jika belum fullscreen) */}
-      {!document.fullscreenElement && mediaTayang && (
+      {!document.fullscreenElement && !document.webkitFullscreenElement && mediaTayang && (
         <div style={{ position: 'absolute', top: '25px', right: '30px', color: 'rgba(255,255,255,0.4)', zIndex: 5, fontSize: '14px', fontWeight: 'bold' }}>
-          🖱️ Ketuk layar di mana saja untuk Fullscreen
+          🖱️ Ketuk layar untuk Fullscreen
         </div>
       )}
 
@@ -74,8 +92,8 @@ export default function TVDisplay({ kembalikanKeMenu }) {
           src={mediaTayang.urlMedia} 
           autoPlay 
           loop 
-          muted /* Ini kuncinya: Video menjadi bisu sehingga otomatis berputar tanpa diblokir browser */
-          playsInline /* Best practice agar lancar di browser TV/Mobile */
+          muted 
+          playsInline 
           style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', pointerEvents: 'none' }}
         />
       ) : (
