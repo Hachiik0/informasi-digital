@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import TVDisplay from './components/TVDisplay';
-import AdminPanel from './components/AdminPanel';
+import AdminDashboard from './components/AdminPanel'; // Menggunakan komponen admin lengkap yang baru kita buat
 
 function App() {
   // State ini bertugas sebagai 'saklar'. 
@@ -14,7 +14,7 @@ function App() {
 
   // Jika saklar berada di posisi 'admin', tampilkan komponen Admin
   if (modeLayar === 'admin') {
-    return <AdminPanel kembalikanKeMenu={() => setModeLayar('menu')} />;
+    return <AdminDashboard kembaliKeTV={() => setModeLayar('menu')} />;
   }
 
   // Tampilan Default (Menu Utama)
