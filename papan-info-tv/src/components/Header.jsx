@@ -54,7 +54,7 @@ export default function Header() {
       {/* Bagian Kiri: Ikon Cuaca & Teks Sapaan */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1, minWidth: 0 }}>
         <img 
-          src="/public/matahari.png" 
+          src="/public/Matahari.png" 
           alt="Ikon Cuaca" 
           style={{ width: '55px', height: '55px', objectFit: 'contain', flexShrink: 0 }} 
         />
