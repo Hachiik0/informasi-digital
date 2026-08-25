@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc as firestoreDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc as firestoreDoc, setDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export default function AdminDashboard({ kembaliKeTV }) {
@@ -8,8 +8,8 @@ export default function AdminDashboard({ kembaliKeTV }) {
   const [inputPassword, setInputPassword] = useState("");
   const [errorLogin, setErrorLogin] = useState("");
 
-  // Tab aktif di admin
-  const [activeTab, setActiveTab] = useState('quotes');
+  // Tab aktif di admin (langsung default ke header)
+  const [activeTab, setActiveTab] = useState('header');
 
   // State untuk List Data
   const [quotesList, setQuotesList] = useState([]);
@@ -17,6 +17,10 @@ export default function AdminDashboard({ kembaliKeTV }) {
   const [jadwalList, setJadwalList] = useState([]);
   const [agendaList, setAgendaList] = useState([]);
   const [mediaList, setMediaList] = useState([]);
+
+  // Form input sementara untuk Header
+  const [namaTargetHeader, setNamaTargetHeader] = useState("");
+  const [subjudulHeader, setSubjudulHeader] = useState("");
 
   // Form input sementara untuk Quotes
   const [quotesTeks, setQuotesTeks] = useState("");
@@ -38,11 +42,11 @@ export default function AdminDashboard({ kembaliKeTV }) {
   const [lokasiAgenda, setLokasiAgenda] = useState("");
   const [waktuAgenda, setWaktuAgenda] = useState("");
 
-  // Form input sementara untuk Media & Cloudinary (Ditambah uploadProgress)
+  // Form input sementara untuk Media & Cloudinary 
   const [urlMedia, setUrlMedia] = useState("");
   const [tipeMedia, setTipeMedia] = useState("image");
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0); // <-- State persentase upload
+  const [uploadProgress, setUploadProgress] = useState(0); 
 
   const [statusSimpan, setStatusSimpan] = useState("");
 
@@ -88,17 +92,30 @@ export default function AdminDashboard({ kembaliKeTV }) {
     setAgendaList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   };
 
-  // Ambil media diurutkan berdasarkan yang terbaru (createdAt)
   const ambilMedia = async () => {
     try {
       const q = query(collection(db, 'media'), orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       setMediaList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
-      // Fallback jika index firestore belum siap
       const snapshot = await getDocs(collection(db, 'media'));
       setMediaList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }
+  };
+
+  // --- KELOLA HEADER ---
+  const handleSimpanHeader = async (e) => {
+    e.preventDefault();
+    try {
+      await setDoc(firestoreDoc(db, 'pengaturan', 'header'), {
+        nama_target: namaTargetHeader,
+        subjudul: subjudulHeader
+      });
+      setNamaTargetHeader("");
+      setSubjudulHeader("");
+      setStatusSimpan("Teks Header berhasil diperbarui!");
+      setTimeout(() => setStatusSimpan(""), 3000);
+    } catch (error) { console.error(error); }
   };
 
   // --- TAMBAH & HAPUS QUOTES ---
@@ -148,25 +165,19 @@ export default function AdminDashboard({ kembaliKeTV }) {
       setStatusSimpan("⚠️ Semua kolom harus diisi!");
       return;
     }
-
     const regexJam = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
     if (!regexJam.test(jamMulai) || !regexJam.test(jamSelesai)) {
       setStatusSimpan("❌ Format jam salah! Gunakan format HH:MM (Contoh: 07:30)");
       setTimeout(() => setStatusSimpan(""), 4000);
       return;
     }
-
     try {
       await addDoc(collection(db, 'jadwal_harian'), { 
-        mata_pelajaran: mapelBaru, 
-        kelas: kelasBaru,
-        hari: hariBaru,
-        jam_mulai: jamMulai, 
-        jam_selesai: jamSelesai 
+        mata_pelajaran: mapelBaru, kelas: kelasBaru, hari: hariBaru, jam_mulai: jamMulai, jam_selesai: jamSelesai 
       });
       setMapelBaru(""); setKelasBaru(""); setJamMulai(""); setJamSelesai("");
       ambilJadwal();
-      setStatusSimpan("Jadwal berhasil ditambahkan! 📚");
+      setStatusSimpan("Jadwal berhasil ditambahkan!");
       setTimeout(() => setStatusSimpan(""), 3000);
     } catch (error) { console.error(error); }
   };
@@ -186,7 +197,7 @@ export default function AdminDashboard({ kembaliKeTV }) {
       await addDoc(collection(db, 'agenda'), { judul: judulAgenda, tanggal: tanggalAgenda, lokasi: lokasiAgenda, waktu: waktuAgenda });
       setJudulAgenda(""); setTanggalAgenda(""); setLokasiAgenda(""); setWaktuAgenda("");
       ambilAgenda();
-      setStatusSimpan("Agenda berhasil ditambahkan! 🗓️");
+      setStatusSimpan("Agenda berhasil ditambahkan!");
       setTimeout(() => setStatusSimpan(""), 3000);
     } catch (error) { console.error(error); }
   };
@@ -202,22 +213,20 @@ export default function AdminDashboard({ kembaliKeTV }) {
   const handleUploadCloudinary = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setIsUploading(true);
     setUploadProgress(0);
     setStatusSimpan("⏳ Sedang mengunggah file...");
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "papan_info_preset"); // Pastikan sesuai preset Anda
+    formData.append("upload_preset", "papan_info_preset"); 
 
     const resourceType = file.type.startsWith('video') ? 'video' : 'image';
-    const cloudName = "m0mmtyoh"; // Ganti dengan cloud_name Anda jika berbeda
+    const cloudName = "m0mmtyoh"; 
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, true);
 
-    // Menghitung persentase progres unggah
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
         const percentComplete = Math.round((event.loaded / event.total) * 100);
@@ -232,7 +241,7 @@ export default function AdminDashboard({ kembaliKeTV }) {
         if (data.secure_url) {
           setUrlMedia(data.secure_url);
           setTipeMedia(resourceType === 'video' ? 'video' : 'image');
-          setStatusSimpan("✅ Berhasil diunggah! Klik 'Simpan Media' di bawah.");
+          setStatusSimpan("Berhasil diunggah! Klik 'Simpan Media' di bawah.");
           setTimeout(() => setStatusSimpan(""), 4000);
         }
       } else {
@@ -240,29 +249,24 @@ export default function AdminDashboard({ kembaliKeTV }) {
         setTimeout(() => setStatusSimpan(""), 4000);
       }
     };
-
     xhr.onerror = () => {
       setIsUploading(false);
       setStatusSimpan("❌ Terjadi kesalahan jaringan saat upload.");
       setTimeout(() => setStatusSimpan(""), 4000);
     };
-
     xhr.send(formData);
   };
 
-  // Simpan media dengan menyertakan timestamp agar urutan terbaru bisa dilacak
   const handleTambahMedia = async (e) => {
     e.preventDefault();
     if (!urlMedia) return;
     try {
       await addDoc(collection(db, 'media'), { 
-        url: urlMedia, 
-        tipe: tipeMedia, 
-        createdAt: serverTimestamp() // Menyimpan waktu unggah
+        url: urlMedia, tipe: tipeMedia, createdAt: serverTimestamp() 
       });
       setUrlMedia("");
       ambilMedia();
-      setStatusSimpan("Media berhasil disimpan ke TV! 🖼️");
+      setStatusSimpan("Media berhasil disimpan ke TV!");
       setTimeout(() => setStatusSimpan(""), 3000);
     } catch (error) { console.error(error); }
   };
@@ -281,31 +285,12 @@ export default function AdminDashboard({ kembaliKeTV }) {
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '15px', width: '100%', maxWidth: '400px', boxShadow: '0px 8px 24px rgba(0,0,0,0.2)', textAlign: 'center' }}>
           <h2 style={{ color: '#0d3b66', marginBottom: '10px' }}>🔐 Admin Login</h2>
           <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '25px' }}>Masukkan password untuk mengakses panel admin.</p>
-          
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <input 
-              type="password" 
-              placeholder="Masukkan Password..." 
-              value={inputPassword} 
-              onChange={(e) => setInputPassword(e.target.value)} 
-              style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '1rem', outline: 'none' }}
-              autoFocus
-            />
-            <button type="submit" style={{ backgroundColor: '#0d3b66', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}>
-              Masuk
-            </button>
+            <input type="password" placeholder="Masukkan Password..." value={inputPassword} onChange={(e) => setInputPassword(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '1rem', outline: 'none' }} autoFocus />
+            <button type="submit" style={{ backgroundColor: '#0d3b66', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}>Masuk</button>
           </form>
-
-          {errorLogin && (
-            <p style={{ color: '#dc3545', fontSize: '0.9rem', marginTop: '15px', fontWeight: 'bold' }}>{errorLogin}</p>
-          )}
-
-          <button 
-            onClick={kembaliKeTV}
-            style={{ backgroundColor: 'transparent', color: '#666', border: 'none', marginTop: '20px', cursor: 'pointer', textDecoration: 'underline' }}
-          >
-            ← Kembali ke Tampilan TV
-          </button>
+          {errorLogin && ( <p style={{ color: '#dc3545', fontSize: '0.9rem', marginTop: '15px', fontWeight: 'bold' }}>{errorLogin}</p> )}
+          <button onClick={kembaliKeTV} style={{ backgroundColor: 'transparent', color: '#666', border: 'none', marginTop: '20px', cursor: 'pointer', textDecoration: 'underline' }}>← Kembali ke Tampilan TV</button>
         </div>
       </div>
     );
@@ -314,14 +299,11 @@ export default function AdminDashboard({ kembaliKeTV }) {
   // JIKA SUDAH LOGIN
   return (
     <div style={{ padding: '30px', maxWidth: '950px', margin: '0 auto', fontFamily: 'sans-serif', backgroundColor: '#f4f7f6', minHeight: '100vh' }}>
-      
+
       {/* Header Admin */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #ccc', paddingBottom: '15px' }}>
         <h2 style={{ color: '#0d3b66', margin: 0 }}>⚙️ Dashboard Admin TV Sekolah</h2>
-        <button 
-          onClick={kembaliKeTV}
-          style={{ backgroundColor: '#0d3b66', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
+        <button onClick={kembaliKeTV} style={{ backgroundColor: '#0d3b66', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
           Kembali ke TV →
         </button>
       </div>
@@ -332,8 +314,9 @@ export default function AdminDashboard({ kembaliKeTV }) {
         </div>
       )}
 
-      {/* Navigasi Tab */}
+      {/* Navigasi Tab (Kelola Header pindah ke urutan 1) */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <button onClick={() => setActiveTab('header')} style={tabStyle(activeTab === 'header')}>Kelola Header</button>
         <button onClick={() => setActiveTab('quotes')} style={tabStyle(activeTab === 'quotes')}>Kelola Quotes</button>
         <button onClick={() => setActiveTab('runningText')} style={tabStyle(activeTab === 'runningText')}>Kelola Running Text</button>
         <button onClick={() => setActiveTab('jadwal')} style={tabStyle(activeTab === 'jadwal')}>Kelola Jadwal</button>
@@ -341,7 +324,26 @@ export default function AdminDashboard({ kembaliKeTV }) {
         <button onClick={() => setActiveTab('media')} style={tabStyle(activeTab === 'media')}>Kelola Media</button>
       </div>
 
-      {/* TAB 1: KELOLA QUOTES */}
+      {/* TAB 1: KELOLA HEADER */}
+      {activeTab === 'header' && (
+        <div style={boxStyle}>
+          <h3>📝 Kelola Teks Header Layar TV</h3>
+          <p style={{ fontSize: '0.9rem', color: '#666' }}>Kata "Selamat Pagi/Siang/Malam" akan otomatis menyesuaikan jam.</p>
+          <form onSubmit={handleSimpanHeader} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '25px' }}>
+            <div>
+              <label style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Nama Sapaan (Contoh: Warga SMA N 2 Playen) :</label>
+              <input type="text" placeholder="Masukkan nama sapaan..." value={namaTargetHeader} onChange={(e) => setNamaTargetHeader(e.target.value)} style={{ ...inputStyle, width: '100%', marginTop: '5px' }} />
+            </div>
+            <div>
+              <label style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Teks Subjudul (Kata-kata penyemangat) :</label>
+              <input type="text" placeholder="Semangat belajar hari ini..." value={subjudulHeader} onChange={(e) => setSubjudulHeader(e.target.value)} style={{ ...inputStyle, width: '100%', marginTop: '5px' }} />
+            </div>
+            <button type="submit" style={btnPrimaryStyle}>Simpan Header</button>
+          </form>
+        </div>
+      )}
+
+      {/* TAB 2: KELOLA QUOTES */}
       {activeTab === 'quotes' && (
         <div style={boxStyle}>
           <h3>💬 Kelola Daftar Quotes (Berganti Otomatis)</h3>
@@ -364,7 +366,7 @@ export default function AdminDashboard({ kembaliKeTV }) {
         </div>
       )}
 
-      {/* TAB 2: KELOLA RUNNING TEXT */}
+      {/* TAB 3: KELOLA RUNNING TEXT */}
       {activeTab === 'runningText' && (
         <div style={boxStyle}>
           <h3>🏃‍♂️ Kelola Daftar Running Text</h3>
@@ -383,24 +385,16 @@ export default function AdminDashboard({ kembaliKeTV }) {
         </div>
       )}
 
-      {/* TAB 3: KELOLA JADWAL */}
+      {/* TAB 4: KELOLA JADWAL */}
       {activeTab === 'jadwal' && (
         <div style={boxStyle}>
           <h3>📚 Kelola Jadwal Harian</h3>
           <form onSubmit={handleTambahJadwal} style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
             <input type="text" placeholder="Nama Mapel" value={mapelBaru} onChange={(e) => setMapelBaru(e.target.value)} style={{ flex: 2, ...inputStyle }} />
             <input type="text" placeholder="Kelas (Contoh: X-A)" value={kelasBaru} onChange={(e) => setKelasBaru(e.target.value)} style={{ flex: 1, ...inputStyle }} />
-            
             <select value={hariBaru} onChange={(e) => setHariBaru(e.target.value)} style={{ flex: 1, ...inputStyle }}>
-              <option value="Senin">Senin</option>
-              <option value="Selasa">Selasa</option>
-              <option value="Rabu">Rabu</option>
-              <option value="Kamis">Kamis</option>
-              <option value="Jumat">Jumat</option>
-              <option value="Sabtu">Sabtu</option>
-              <option value="Minggu">Minggu</option>
+              <option value="Senin">Senin</option><option value="Selasa">Selasa</option><option value="Rabu">Rabu</option><option value="Kamis">Kamis</option><option value="Jumat">Jumat</option><option value="Sabtu">Sabtu</option><option value="Minggu">Minggu</option>
             </select>
-
             <input type="text" placeholder="Mulai (07:30)" value={jamMulai} onChange={(e) => setJamMulai(e.target.value)} style={{ flex: 1, ...inputStyle }} maxLength={5} />
             <input type="text" placeholder="Selesai (08:15)" value={jamSelesai} onChange={(e) => setJamSelesai(e.target.value)} style={{ flex: 1, ...inputStyle }} maxLength={5} />
             <button type="submit" style={btnPrimaryStyle}>Tambah</button>
@@ -416,7 +410,7 @@ export default function AdminDashboard({ kembaliKeTV }) {
         </div>
       )}
 
-      {/* TAB 4: KELOLA AGENDA */}
+      {/* TAB 5: KELOLA AGENDA */}
       {activeTab === 'agenda' && (
         <div style={boxStyle}>
           <h3>🗓️ Kelola Agenda Kegiatan</h3>
@@ -443,21 +437,14 @@ export default function AdminDashboard({ kembaliKeTV }) {
         </div>
       )}
 
-      {/* TAB 5: KELOLA MEDIA (DENGAN PROGRESS BAR PERSENTASE UPLOAD) */}
+      {/* TAB 6: KELOLA MEDIA */}
       {activeTab === 'media' && (
         <div style={boxStyle}>
           <h3>🖼️ Kelola Media Slideshow (Berganti Tiap 10 Detik)</h3>
-          
           <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#eef2f5', borderRadius: '8px' }}>
             <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#0d3b66' }}>📤 Upload File dari Perangkat (Cloudinary):</label>
-            <input 
-              type="file" 
-              accept="image/*,video/*" 
-              onChange={handleUploadCloudinary} 
-              style={{ fontSize: '0.9rem', marginBottom: '10px' }}
-            />
+            <input type="file" accept="image/*,video/*" onChange={handleUploadCloudinary} style={{ fontSize: '0.9rem', marginBottom: '10px' }} />
             
-            {/* Progress Bar & Persentase */}
             {isUploading && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 'bold', color: '#0d3b66' }}>
@@ -472,13 +459,7 @@ export default function AdminDashboard({ kembaliKeTV }) {
           </div>
 
           <form onSubmit={handleTambahMedia} style={{ display: 'flex', gap: '10px', marginBottom: '25px', flexWrap: 'wrap' }}>
-            <input 
-              type="text" 
-              placeholder="Masukkan URL atau hasil upload otomatis..." 
-              value={urlMedia} 
-              onChange={(e) => setUrlMedia(e.target.value)} 
-              style={{ flex: 2, ...inputStyle }} 
-            />
+            <input type="text" placeholder="Masukkan URL atau hasil upload otomatis..." value={urlMedia} onChange={(e) => setUrlMedia(e.target.value)} style={{ flex: 2, ...inputStyle }} />
             <select value={tipeMedia} onChange={(e) => setTipeMedia(e.target.value)} style={{ flex: 1, ...inputStyle }}>
               <option value="image">Gambar (Image)</option>
               <option value="video">Video</option>

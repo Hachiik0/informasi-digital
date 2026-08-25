@@ -95,7 +95,7 @@ export default function Sidebar() {
           </span>
           <p style={{ 
             color: 'white', 
-            fontSize: '1.4rem', 
+            fontSize: '1.8rem', 
             fontStyle: 'italic', 
             lineHeight: '1.5', 
             fontWeight: '600',
@@ -116,7 +116,7 @@ export default function Sidebar() {
           <div style={{ width: '40px', height: '2px', backgroundColor: '#ffd700' }}></div>
           <p style={{ 
             color: '#ffd700', 
-            fontSize: '1.1rem', 
+            fontSize: '1.5rem', 
             fontWeight: 'bold', 
             margin: 0,
             textAlign: 'right' 
