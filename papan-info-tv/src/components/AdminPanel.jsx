@@ -440,9 +440,9 @@ export default function AdminDashboard({ kembaliKeTV }) {
       {/* TAB 6: KELOLA MEDIA */}
       {activeTab === 'media' && (
         <div style={boxStyle}>
-          <h3>🖼️ Kelola Media Slideshow (Berganti Tiap 10 Detik)</h3>
+          <h3>Kelola Media Slideshow</h3>
           <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#eef2f5', borderRadius: '8px' }}>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#0d3b66' }}>📤 Upload File dari Perangkat (Cloudinary):</label>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#0d3b66' }}>📤 Upload File dari Perangkat:</label>
             <input type="file" accept="image/*,video/*" onChange={handleUploadCloudinary} style={{ fontSize: '0.9rem', marginBottom: '10px' }} />
             
             {isUploading && (
