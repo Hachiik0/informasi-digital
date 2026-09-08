@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc as firestoreDoc, setDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { db } from '../firebase';
+import { signInAnonymously } from 'firebase/auth';
+import {
+  collection,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  doc as firestoreDoc,
+  setDoc,
+  serverTimestamp,
+  query,
+  orderBy
+} from 'firebase/firestore';
+import { db, auth } from '../firebase';
 
 export default function AdminDashboard({ kembaliKeTV }) {
   // State untuk Keamanan Password Admin
@@ -51,15 +62,24 @@ export default function AdminDashboard({ kembaliKeTV }) {
   const [statusSimpan, setStatusSimpan] = useState("");
 
   // Fungsi Login Admin
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (inputPassword === "wasd99") {
-      setIsLoggedIn(true);
-      setErrorLogin("");
-    } else {
-      setErrorLogin("❌ Password salah! Silakan coba lagi.");
-    }
-  };
+  
+const handleLogin = async (e) => {
+  e.preventDefault();
+
+  if (inputPassword !== "wasd99") {
+    setErrorLogin("❌ Password salah! Silakan coba lagi.");
+    return;
+  }
+
+  try {
+    await signInAnonymously(auth);
+    setIsLoggedIn(true);
+    setErrorLogin("");
+  } catch (error) {
+    console.error("Autentikasi Firebase gagal:", error);
+    setErrorLogin("❌ Gagal terhubung ke Firebase.");
+  }
+};
 
   // Ambil semua data saat sudah berhasil login
   useEffect(() => {
